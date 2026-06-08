@@ -1,9 +1,5 @@
-(defun c:TagBlocksFromTable ( / tbl ent row blkName rowCount blkSet blkEnt blkObj minPt maxPt centerX bottomY insertPt layerName tagNumber tagTextHeight tagTextOffset)
+(defun c:TagBlocksFromTable ( / tbl ent row blkName rowCount blkSet blkEnt blkObj minPt maxPt centerX bottomY insertPt layerName tagNumber)
   (vl-load-com)
-
-  ;; اندازه متن برچسب برای خوانایی در چاپ و PDF
-  (setq tagTextHeight 32.0)
-  (setq tagTextOffset 10.0)
 
   ;; نام لایه جدید
   (setq layerName "tag_map")
@@ -69,7 +65,7 @@
               (setq maxPt (vlax-safearray->list maxPt))
               (setq centerX (/ (+ (car minPt) (car maxPt)) 2.0))
               (setq bottomY (cadr minPt))
-              (setq insertPt (list centerX (- bottomY tagTextOffset) 0.0))
+              (setq insertPt (list centerX (- bottomY 6.0) 0.0))
 
               ;; ایجاد متن در لایه tag_map
               (entmakex
@@ -80,7 +76,7 @@
                   (cons 11 insertPt)
                   (cons 1 (itoa tagNumber)) ; استفاده از tagNumber که از 1 شروع می‌شود
                   (cons 7 "Standard")
-                  (cons 40 tagTextHeight)
+                  (cons 40 20) ; ارتفاع متن (۲۰ = اندازه تأییدشده؛ بزرگ‌تر نشود)
                   (cons 72 1) ; تراز افقی: وسط
                   (cons 73 3) ; تراز عمودی: پایین
                 )
