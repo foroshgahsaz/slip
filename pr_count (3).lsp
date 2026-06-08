@@ -412,8 +412,8 @@
         (vlax-3D-point (trans ins 1 0))
         (+ (length lst) 2)
         col_count
-        (* 40 hgt)
-        (* hgt 20)
+        (* 55 hgt)
+        (* 28 hgt)
     )
 )
 
@@ -430,20 +430,22 @@
 (vla-settextstyle tab acHeaderRow "B_Titr_Style")
 (vla-settextstyle tab acDataRow "B_Titr_Style")
 
-                    ;; Set column widths
-                    (vla-SetColumnWidth tab 0 10.0)  ;; Quantity
-                    (vla-SetColumnWidth tab 1 25.0)  ;; Dimensions
-                    (vla-SetColumnWidth tab 2 60.0)  ;; Block Name
-                    (vla-SetColumnWidth tab 3 20.0)  ;; Product Code
-                    (vla-SetColumnWidth tab 4 10.0)   ;; Row
+                    ;; Set column widths (بزرگ‌تر برای خوانایی در چاپ و PDF)
+                    (vla-SetColumnWidth tab 0 16.0)  ;; Quantity
+                    (vla-SetColumnWidth tab 1 40.0)  ;; Dimensions
+                    (vla-SetColumnWidth tab 2 95.0)  ;; Block Name
+                    (vla-SetColumnWidth tab 3 32.0)  ;; Product Code
+                    (vla-SetColumnWidth tab 4 16.0)  ;; Row
 
-                    ;; Set text heights
-                    (vla-SetTextHeight tab acTitleRow 3.0)
-                    (vla-SetTextHeight tab acHeaderRow 2.5)
-                    (vla-SetTextHeight tab acDataRow 2.0)
+                    ;; Set text heights (درشت‌تر برای چاپ و PDF)
+                    (vla-SetTextHeight tab acTitleRow 5.0)
+                    (vla-SetTextHeight tab acHeaderRow 4.0)
+                    (vla-SetTextHeight tab acDataRow 3.5)
 
-                    ;; Set row height
-                    (vla-put-RowHeight tab 6.0)
+                    ;; Set row height (بزرگ‌تر برای عنوان و سرستون)
+                    (vla-put-RowHeight tab 10.0)
+                    (vla-SetRowHeight tab 0 12.0)
+                    (vla-SetRowHeight tab 1 11.0)
 
                     ;; Set alignment
                     (vla-SetAlignment tab acTitleRow acMiddleCenter)
