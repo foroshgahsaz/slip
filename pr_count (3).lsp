@@ -412,8 +412,8 @@
         (vlax-3D-point (trans ins 1 0))
         (+ (length lst) 2)
         col_count
-        (* 55 hgt)
-        (* 28 hgt)
+        36.0
+        90.0
     )
 )
 
@@ -430,22 +430,20 @@
 (vla-settextstyle tab acHeaderRow "B_Titr_Style")
 (vla-settextstyle tab acDataRow "B_Titr_Style")
 
-                    ;; Set column widths (بزرگ‌تر برای خوانایی در چاپ و PDF)
-                    (vla-SetColumnWidth tab 0 16.0)  ;; Quantity
-                    (vla-SetColumnWidth tab 1 40.0)  ;; Dimensions
-                    (vla-SetColumnWidth tab 2 95.0)  ;; Block Name
-                    (vla-SetColumnWidth tab 3 32.0)  ;; Product Code
-                    (vla-SetColumnWidth tab 4 16.0)  ;; Row
+                    ;; اندازه جدول متناسب با مقیاس نقشه (خوانا در چاپ و PDF)
+                    (vla-SetColumnWidth tab 0 80.0)   ;; Quantity
+                    (vla-SetColumnWidth tab 1 200.0)  ;; Dimensions
+                    (vla-SetColumnWidth tab 2 480.0)  ;; Block Name
+                    (vla-SetColumnWidth tab 3 160.0)  ;; Product Code
+                    (vla-SetColumnWidth tab 4 80.0)   ;; Row
 
-                    ;; Set text heights (درشت‌تر برای چاپ و PDF)
-                    (vla-SetTextHeight tab acTitleRow 5.0)
-                    (vla-SetTextHeight tab acHeaderRow 4.0)
-                    (vla-SetTextHeight tab acDataRow 3.5)
+                    (vla-SetTextHeight tab acTitleRow 24.0)
+                    (vla-SetTextHeight tab acHeaderRow 20.0)
+                    (vla-SetTextHeight tab acDataRow 16.0)
 
-                    ;; Set row height (بزرگ‌تر برای عنوان و سرستون)
-                    (vla-put-RowHeight tab 10.0)
-                    (vla-SetRowHeight tab 0 12.0)
-                    (vla-SetRowHeight tab 1 11.0)
+                    (vla-put-RowHeight tab 36.0)
+                    (vla-SetRowHeight tab 0 42.0)
+                    (vla-SetRowHeight tab 1 38.0)
 
                     ;; Set alignment
                     (vla-SetAlignment tab acTitleRow acMiddleCenter)
