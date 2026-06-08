@@ -10,9 +10,9 @@
 ;;  for each block in the table output.                                 ;;
 ;;                                                                      ;;
 ;;  Modified: August 2025 - Fixed dimensions and quantity logic         ;;
-;;  Modified: June 2026 - Table print/PDF readability improvements:     ;;
-;;    - Table font sizes doubled (title 48, header 40, data 32)         ;;
-;;    - Column widths and row heights scaled for architectural drawings   ;;
+;;  Modified: June 2026 - Table print/PDF readability (4x font scale):   ;;
+;;    - Table font sizes: title 192, header 160, data 128               ;;
+;;    - Column widths and row heights scaled proportionally              ;;
 ;;    - Size settings applied AFTER filling table text (fixes reset bug) ;;
 ;;    - Removed duplicate vla-put-stylename that overwrote text heights   ;;
 ;;----------------------------------------------------------------------;;
@@ -411,15 +411,15 @@
 
 
 
-;; ابعاد اولیه جدول: ارتفاع سطر 72، عرض ستون 180 (برای مقیاس نقشه معماری)
+;; ابعاد اولیه جدول: ارتفاع سطر 288، عرض ستون 720 (۴ برابر برای چاپ و PDF)
 (setq tab
     (vla-addtable
         (vlax-get-property (count:acdoc) (if (= 1 (getvar 'cvport)) 'paperspace 'modelspace))
         (vlax-3D-point (trans ins 1 0))
         (+ (length lst) 2)
         col_count
-        72.0
-        180.0
+        288.0
+        720.0
     )
 )
 
@@ -483,22 +483,20 @@
                         (vla-deleterows tab 0 1)
                     )
 
-                    ;; --- آخرین تغییر (ژوئن ۲۰۲۶): خوانایی جدول در چاپ و PDF ---
-                    ;; اندازه فونت ۲ برابر نسخه قبلی؛ تنظیمات باید بعد از vla-settext باشد
-                    ;; (اگر قبل از پر شدن متن یا بعد از put-stylename باشد، اعمال نمی‌شود)
-                    (vla-SetColumnWidth tab 0 160.0)  ;; تعداد
-                    (vla-SetColumnWidth tab 1 400.0)  ;; ابعاد
-                    (vla-SetColumnWidth tab 2 960.0)  ;; نام بلاک
-                    (vla-SetColumnWidth tab 3 320.0)  ;; کد محصول
-                    (vla-SetColumnWidth tab 4 160.0)  ;; ردیف
+                    ;; --- فونت جدول ۴ برابر (ژوئن ۲۰۲۶) — بعد از vla-settext اعمال شود ---
+                    (vla-SetColumnWidth tab 0 640.0)   ;; تعداد
+                    (vla-SetColumnWidth tab 1 1600.0)  ;; ابعاد
+                    (vla-SetColumnWidth tab 2 3840.0)  ;; نام بلاک
+                    (vla-SetColumnWidth tab 3 1280.0)  ;; کد محصول
+                    (vla-SetColumnWidth tab 4 640.0)   ;; ردیف
 
-                    (vla-SetTextHeight tab acTitleRow 48.0)  ;; عنوان جدول
-                    (vla-SetTextHeight tab acHeaderRow 40.0) ;; سرستون
-                    (vla-SetTextHeight tab acDataRow 32.0)   ;; داده‌ها
+                    (vla-SetTextHeight tab acTitleRow 192.0) ;; عنوان جدول
+                    (vla-SetTextHeight tab acHeaderRow 160.0) ;; سرستون
+                    (vla-SetTextHeight tab acDataRow 128.0)   ;; داده‌ها
 
-                    (vla-put-RowHeight tab 72.0)
-                    (vla-SetRowHeight tab 0 84.0)  ;; سطر عنوان
-                    (vla-SetRowHeight tab 1 76.0)  ;; سطر سرستون
+                    (vla-put-RowHeight tab 288.0)
+                    (vla-SetRowHeight tab 0 336.0) ;; سطر عنوان
+                    (vla-SetRowHeight tab 1 304.0) ;; سطر سرستون
 
                     (vla-SetAlignment tab acTitleRow acMiddleCenter)
                     (vla-SetAlignment tab acHeaderRow acMiddleCenter)
