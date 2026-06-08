@@ -412,8 +412,8 @@
         (vlax-3D-point (trans ins 1 0))
         (+ (length lst) 2)
         col_count
-        36.0
-        90.0
+        72.0
+        180.0
     )
 )
 
@@ -430,32 +430,9 @@
 (vla-settextstyle tab acHeaderRow "B_Titr_Style")
 (vla-settextstyle tab acDataRow "B_Titr_Style")
 
-                    ;; اندازه جدول متناسب با مقیاس نقشه (خوانا در چاپ و PDF)
-                    (vla-SetColumnWidth tab 0 80.0)   ;; Quantity
-                    (vla-SetColumnWidth tab 1 200.0)  ;; Dimensions
-                    (vla-SetColumnWidth tab 2 480.0)  ;; Block Name
-                    (vla-SetColumnWidth tab 3 160.0)  ;; Product Code
-                    (vla-SetColumnWidth tab 4 80.0)   ;; Row
-
-                    (vla-SetTextHeight tab acTitleRow 24.0)
-                    (vla-SetTextHeight tab acHeaderRow 20.0)
-                    (vla-SetTextHeight tab acDataRow 16.0)
-
-                    (vla-put-RowHeight tab 36.0)
-                    (vla-SetRowHeight tab 0 42.0)
-                    (vla-SetRowHeight tab 1 38.0)
-
-                    ;; Set alignment
-                    (vla-SetAlignment tab acTitleRow acMiddleCenter)
-                    (vla-SetAlignment tab acHeaderRow acMiddleCenter)
-                    (vla-SetAlignment tab acDataRow acMiddleCenter)
-
-
-
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-true)
                     )
-                    (vla-put-stylename tab (getvar 'ctablestyle))
 
                     ;; Create header row
                     (setq col 0)
@@ -498,6 +475,29 @@
                     (if (= "1" tg1)
                         (vla-settext tab 0 0 ed1)
                         (vla-deleterows tab 0 1)
+                    )
+
+                    ;; اندازه فونت و ابعاد جدول (بعد از پر شدن متن تا بازنویسی نشود)
+                    (vla-SetColumnWidth tab 0 160.0)  ;; Quantity
+                    (vla-SetColumnWidth tab 1 400.0)  ;; Dimensions
+                    (vla-SetColumnWidth tab 2 960.0)  ;; Block Name
+                    (vla-SetColumnWidth tab 3 320.0)  ;; Product Code
+                    (vla-SetColumnWidth tab 4 160.0)  ;; Row
+
+                    (vla-SetTextHeight tab acTitleRow 48.0)
+                    (vla-SetTextHeight tab acHeaderRow 40.0)
+                    (vla-SetTextHeight tab acDataRow 32.0)
+
+                    (vla-put-RowHeight tab 72.0)
+                    (vla-SetRowHeight tab 0 84.0)
+                    (vla-SetRowHeight tab 1 76.0)
+
+                    (vla-SetAlignment tab acTitleRow acMiddleCenter)
+                    (vla-SetAlignment tab acHeaderRow acMiddleCenter)
+                    (vla-SetAlignment tab acDataRow acMiddleCenter)
+
+                    (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
+                        (vla-put-regeneratetablesuppressed tab :vlax-false)
                     )
                 )
                 (   (setenv "LMac\\countdir" (count:fixdir (vl-filename-directory fnm)))
