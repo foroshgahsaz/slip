@@ -10,11 +10,10 @@
 ;;  for each block in the table output.                                 ;;
 ;;                                                                      ;;
 ;;  Modified: August 2025 - Fixed dimensions and quantity logic         ;;
-;;  Modified: June 2026 - Table print/PDF readability (4x font scale):   ;;
-;;    - Table font sizes: title 192, header 160, data 128               ;;
-;;    - Column widths and row heights scaled proportionally              ;;
-;;    - Size settings applied AFTER filling table text (fixes reset bug) ;;
-;;    - Removed duplicate vla-put-stylename that overwrote text heights   ;;
+;;  Modified: June 2026 - Table print/PDF (4x scale) + count fix:       ;;
+;;    - count:table-scale 4.0 (title 192, header 160, data 128)       ;;
+;;    - Layer init moved out of file load (fixes Quick Select on load)  ;;
+;;    - ssget selection fixed; sizes applied after table text fill      ;;
 ;;----------------------------------------------------------------------;;
 ;;  Original Author: Lee Mac, Copyright © 2014  -  www.lee-mac.com      ;;
 ;;----------------------------------------------------------------------;;
@@ -77,22 +76,64 @@
 
 ;;----------------------------------------------------------------------;;
 
-;; Create and set Table layer
-(setq layerName "Table")
-(setq tableObjects (ssget "X" (list (cons 8 "Table"))))
-(if tableObjects
-  (progn
-    (command "._ERASE" tableObjects "")
-    (prompt "\n🗑️ Objects deleted from 'Table' layer.")
-  )
+;; Table print scale (4x base sizes for PDF/print)
+(setq count:table-scale 4.0)
+
+;;----------------------------------------------------------------------;;
+
+(defun count:init-table-layer ( / layerName tableObjects )
+    (setq layerName "Table")
+    (if
+        (setq tableObjects
+            (ssget "_X" (list (cons 0 "*") (cons 8 layerName)))
+        )
+        (progn
+            (command "._ERASE" tableObjects "")
+            (prompt "\nPrevious Table layer objects deleted.")
+        )
+    )
+    (if (not (tblsearch "LAYER" layerName))
+        (command "._-LAYER" "_NEW" layerName "_COLOR" "1" layerName "")
+        (command "._-LAYER" "_COLOR" "1" layerName "")
+    )
+    (setvar "CLAYER" layerName)
 )
 
-(if (not (tblsearch "LAYER" layerName))
-  (command "._-LAYER" "_NEW" layerName "_COLOR" "1" layerName "")
-  (command "._-LAYER" "_COLOR" "1" layerName "")
+;;----------------------------------------------------------------------;;
+
+(defun count:create-text-style ( style-name font-name / doc styles text-style )
+    (setq doc (vla-get-activedocument (vlax-get-acad-object)))
+    (setq styles (vla-get-textstyles doc))
+    (if (not (tblsearch "STYLE" style-name))
+        (progn
+            (setq text-style (vla-add styles style-name))
+            (vla-put-fontfile text-style font-name)
+            (vla-put-height text-style 0.0)
+            (vla-put-width text-style 1.0)
+            (vla-put-obliqueangle text-style 0.0)
+        )
+    )
 )
 
-(setvar "CLAYER" layerName)
+;;----------------------------------------------------------------------;;
+
+(defun count:apply-table-print-size ( tab / s )
+    (setq s count:table-scale)
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* 160.0 s)))
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* 400.0 s)))
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* 960.0 s)))
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* 320.0 s)))
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* 160.0 s)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* 48.0 s)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* 40.0 s)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow (* 32.0 s)))
+    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* 72.0 s)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* 84.0 s)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* 76.0 s)))
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acTitleRow acMiddleCenter))
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acHeaderRow acMiddleCenter))
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acDataRow acMiddleCenter))
+)
 
 ;;----------------------------------------------------------------------;;
 
@@ -226,6 +267,7 @@
     )
 
     (count:startundo (count:acdoc))
+    (count:init-table-layer)
 
     (while (setq tmp (tblnext "block" (null tmp)))
         (if (= 4 (logand 4 (cdr (assoc 70 tmp))))
@@ -253,18 +295,10 @@
         (   (progn
                 (setvar 'nomutt 1)
                 (princ "\nSelect blocks to count <all>: ")
-                (setq sel
-                    (cond
-                        (   (null (setq sel (vl-catch-all-apply 'ssget (list fil))))
-                            all
-                        )
-                        (   (null (vl-catch-all-error-p sel))
-                            sel
-                        )
-                    )
-                )
+                (setq sel (ssget "_:S" fil))
                 (setvar 'nomutt 0)
-                (null sel)
+                (if (not sel) (setq sel all))
+                nil
             )
         )
         (   (or (= "com" out)
@@ -390,38 +424,19 @@
 
 
 
-        ;; بارگذاری ابزارهای لازم
-(vl-load-com)
+                    (vl-load-com)
+                    (count:create-text-style "B_Titr_Style" "B Yekan+")
 
-(defun create-text-style (style-name font-name / doc styles text-style)
-  (setq doc (vla-get-activedocument (vlax-get-acad-object)))
-  (setq styles (vla-get-textstyles doc))
-  (if (not (tblsearch "STYLE" style-name))
-      (progn
-        (setq text-style (vla-add styles style-name))
-        (vla-put-fontfile text-style font-name)
-        (vla-put-height text-style 0.0)
-        (vla-put-width text-style 1.0)
-        (vla-put-obliqueangle text-style 0.0)
-      )
-  )
-)
-;; استفاده از فونت
-(create-text-style "B_Titr_Style" "B Yekan+")
-
-
-
-;; ابعاد اولیه جدول: ارتفاع سطر 288، عرض ستون 720 (۴ برابر برای چاپ و PDF)
-(setq tab
-    (vla-addtable
-        (vlax-get-property (count:acdoc) (if (= 1 (getvar 'cvport)) 'paperspace 'modelspace))
-        (vlax-3D-point (trans ins 1 0))
-        (+ (length lst) 2)
-        col_count
-        288.0
-        720.0
-    )
-)
+                    (setq tab
+                        (vla-addtable
+                            (vlax-get-property (count:acdoc) (if (= 1 (getvar 'cvport)) 'paperspace 'modelspace))
+                            (vlax-3D-point (trans ins 1 0))
+                            (+ (length lst) 2)
+                            col_count
+                            (* 72.0 count:table-scale)
+                            (* 180.0 count:table-scale)
+                        )
+                    )
 
 
 
@@ -430,11 +445,10 @@
 
 
 
-;; تنظیمات جدول
-(vla-put-stylename tab (getvar 'ctablestyle))
-(vla-settextstyle tab acTitleRow "B_Titr_Style")
-(vla-settextstyle tab acHeaderRow "B_Titr_Style")
-(vla-settextstyle tab acDataRow "B_Titr_Style")
+                    (vla-put-stylename tab (getvar 'ctablestyle))
+                    (vla-settextstyle tab acTitleRow "B_Titr_Style")
+                    (vla-settextstyle tab acHeaderRow "B_Titr_Style")
+                    (vla-settextstyle tab acDataRow "B_Titr_Style")
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-true)
@@ -483,24 +497,8 @@
                         (vla-deleterows tab 0 1)
                     )
 
-                    ;; --- فونت جدول ۴ برابر (ژوئن ۲۰۲۶) — بعد از vla-settext اعمال شود ---
-                    (vla-SetColumnWidth tab 0 640.0)   ;; تعداد
-                    (vla-SetColumnWidth tab 1 1600.0)  ;; ابعاد
-                    (vla-SetColumnWidth tab 2 3840.0)  ;; نام بلاک
-                    (vla-SetColumnWidth tab 3 1280.0)  ;; کد محصول
-                    (vla-SetColumnWidth tab 4 640.0)   ;; ردیف
-
-                    (vla-SetTextHeight tab acTitleRow 192.0) ;; عنوان جدول
-                    (vla-SetTextHeight tab acHeaderRow 160.0) ;; سرستون
-                    (vla-SetTextHeight tab acDataRow 128.0)   ;; داده‌ها
-
-                    (vla-put-RowHeight tab 288.0)
-                    (vla-SetRowHeight tab 0 336.0) ;; سطر عنوان
-                    (vla-SetRowHeight tab 1 304.0) ;; سطر سرستون
-
-                    (vla-SetAlignment tab acTitleRow acMiddleCenter)
-                    (vla-SetAlignment tab acHeaderRow acMiddleCenter)
-                    (vla-SetAlignment tab acDataRow acMiddleCenter)
+                    ;; Apply 4x print sizes after table text is filled
+                    (count:apply-table-print-size tab)
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-false)
