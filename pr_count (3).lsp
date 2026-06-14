@@ -10,10 +10,9 @@
 ;;  for each block in the table output.                                 ;;
 ;;                                                                      ;;
 ;;  Modified: August 2025 - Fixed dimensions and quantity logic         ;;
-;;  Modified: June 2026 - Table print/PDF (4x scale) + count fix:       ;;
-;;    - count:table-scale 4.0 (title 192, header 160, data 128)       ;;
-;;    - Layer init moved out of file load (fixes Quick Select on load)  ;;
-;;    - ssget selection fixed; sizes applied after table text fill      ;;
+;;  Modified: June 2026 - Table sized to match drawing (tag ref height 20): ;;
+;;    - Data 18, header 22, title 26 (proportional to row2 tag text)    ;;
+;;    - Layer init on count only; ssget fix; sizes after text fill      ;;
 ;;----------------------------------------------------------------------;;
 ;;  Original Author: Lee Mac, Copyright © 2014  -  www.lee-mac.com      ;;
 ;;----------------------------------------------------------------------;;
@@ -76,8 +75,8 @@
 
 ;;----------------------------------------------------------------------;;
 
-;; Table print scale (4x base sizes for PDF/print)
-(setq count:table-scale 4.0)
+;; Table sizes matched to drawing scale (same order as tag text in row2.lsp = 20)
+(setq count:tag-ref-height 20.0)
 
 ;;----------------------------------------------------------------------;;
 
@@ -117,19 +116,19 @@
 
 ;;----------------------------------------------------------------------;;
 
-(defun count:apply-table-print-size ( tab / s )
-    (setq s count:table-scale)
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* 160.0 s)))
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* 400.0 s)))
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* 960.0 s)))
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* 320.0 s)))
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* 160.0 s)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* 48.0 s)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* 40.0 s)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow (* 32.0 s)))
-    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* 72.0 s)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* 84.0 s)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* 76.0 s)))
+(defun count:apply-table-print-size ( tab / th )
+    (setq th count:tag-ref-height)
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* th 1.6)))   ;; qty
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* th 4.0)))   ;; dimensions
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* th 12.0)))  ;; block name
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* th 3.5)))   ;; product code
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* th 1.6)))   ;; row
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* th 1.3)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* th 1.1)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow (* th 0.9)))
+    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* th 2.1)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* th 2.5)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* th 2.3)))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acTitleRow acMiddleCenter))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acHeaderRow acMiddleCenter))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acDataRow acMiddleCenter))
@@ -433,8 +432,8 @@
                             (vlax-3D-point (trans ins 1 0))
                             (+ (length lst) 2)
                             col_count
-                            (* 72.0 count:table-scale)
-                            (* 180.0 count:table-scale)
+                            (* count:tag-ref-height 2.1)
+                            (* count:tag-ref-height 5.5)
                         )
                     )
 
@@ -497,7 +496,7 @@
                         (vla-deleterows tab 0 1)
                     )
 
-                    ;; Apply 4x print sizes after table text is filled
+                    ;; Apply drawing-proportional table sizes after text fill
                     (count:apply-table-print-size tab)
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
