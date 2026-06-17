@@ -10,9 +10,8 @@
 ;;  for each block in the table output.                                 ;;
 ;;                                                                      ;;
 ;;  Modified: August 2025 - Fixed dimensions and quantity logic         ;;
-;;  Modified: June 2026 - Table sized to match drawing (tag ref height 20): ;;
-;;    - Data 18, header 22, title 26 (proportional to row2 tag text)    ;;
-;;    - Layer init on count only; ssget fix; sizes after text fill      ;;
+;;  Modified: June 2026 - Table layout tuned for Persian text readability: ;;
+;;    - Wider columns, taller rows, font height 20 (matches block tags)  ;;
 ;;----------------------------------------------------------------------;;
 ;;  Original Author: Lee Mac, Copyright © 2014  -  www.lee-mac.com      ;;
 ;;----------------------------------------------------------------------;;
@@ -116,19 +115,22 @@
 
 ;;----------------------------------------------------------------------;;
 
-(defun count:apply-table-print-size ( tab / th )
+(defun count:apply-table-print-size ( tab / th blkNameCol col )
     (setq th count:tag-ref-height)
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* th 1.6)))   ;; qty
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* th 4.0)))   ;; dimensions
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* th 12.0)))  ;; block name
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* th 3.5)))   ;; product code
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* th 1.6)))   ;; row
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* th 1.3)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* th 1.1)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow (* th 0.9)))
-    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* th 2.1)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* th 2.5)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* th 2.3)))
+    ;; column widths - wider for Persian block names and dimensions
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* th 2.5)))   ;; qty
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* th 7.5)))   ;; dimensions
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* th 22.0)))  ;; block name
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* th 5.5)))   ;; product code
+    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* th 2.5)))   ;; row
+    ;; font heights - match tag text on drawing
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* th 1.25)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* th 1.15)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow th))
+    ;; row heights - taller cells for wrapped Persian text
+    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* th 4.0)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* th 3.6)))
+    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* th 3.2)))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acTitleRow acMiddleCenter))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acHeaderRow acMiddleCenter))
     (vl-catch-all-apply 'vla-SetAlignment (list tab acDataRow acMiddleCenter))
@@ -432,8 +434,8 @@
                             (vlax-3D-point (trans ins 1 0))
                             (+ (length lst) 2)
                             col_count
-                            (* count:tag-ref-height 2.1)
-                            (* count:tag-ref-height 5.5)
+                            (* count:tag-ref-height 4.0)
+                            (* count:tag-ref-height 9.0)
                         )
                     )
 
@@ -483,6 +485,16 @@
                         (if (= "1" tg5) (progn 
                             (vla-settext tab row col (caddar row_item)) 
                             (setq col (1+ col))))  ;; Row
+
+                        (if
+                            (or
+                                (> (strlen (caar row_item)) 30)
+                                (> (strlen (cadddr (car row_item))) 18)
+                            )
+                            (vl-catch-all-apply 'vla-SetRowHeight
+                                (list tab row (* count:tag-ref-height 5.5))
+                            )
+                        )
 
                         (setq row (1+ row))
                     )
