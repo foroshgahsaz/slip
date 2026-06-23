@@ -10,8 +10,9 @@
 ;;  for each block in the table output.                                 ;;
 ;;                                                                      ;;
 ;;  Modified: August 2025 - Fixed dimensions and quantity logic         ;;
-;;  Modified: June 2026 - Table layout tuned for Persian text readability: ;;
-;;    - Wider columns, taller rows, font height 20 (matches block tags)  ;;
+;;  Modified: June 2026 - Smart table layout matched to plan scale:      ;;
+;;    - Height from selection bbox; column widths from cell content     ;;
+;;    - Bold Persian font; per-row height for wrapped text              ;;
 ;;----------------------------------------------------------------------;;
 ;;  Original Author: Lee Mac, Copyright © 2014  -  www.lee-mac.com      ;;
 ;;----------------------------------------------------------------------;;
@@ -74,8 +75,153 @@
 
 ;;----------------------------------------------------------------------;;
 
-;; Table sizes matched to drawing scale (same order as tag text in row2.lsp = 20)
+;; Table text height (bold); tag labels in row2.lsp use 20
 (setq count:tag-ref-height 20.0)
+(setq count:table-data-height 14.0)
+
+;;----------------------------------------------------------------------;;
+
+(defun count:char-unit-width ( th )
+    (* th 0.58)
+)
+
+(defun count:text-layout-width ( str th pad )
+    (* pad (strlen str) (count:char-unit-width th))
+)
+
+(defun count:max-layout-width ( strs th pad )
+    (apply 'max (cons (* th 2.0) (mapcar '(lambda ( s ) (count:text-layout-width s th pad)) strs)))
+)
+
+(defun count:wrap-line-count ( str colW th / cpl )
+    (setq cpl (max 1 (fix (/ colW (count:char-unit-width th)))))
+    (max 1 (1+ (fix (/ (strlen str) cpl))))
+)
+
+(defun count:union-ss-bbox ( ss / i ent obj mn mx mnL mxL minpt maxpt )
+    (setq minpt '(1e99 1e99 0.0)
+          maxpt '(-1e99 -1e99 0.0)
+    )
+    (if (and ss (> (sslength ss) 0))
+        (progn
+            (repeat (setq i (sslength ss))
+                (setq ent (ssname ss (setq i (1- i))))
+                (setq obj (vlax-ename->vla-object ent))
+                (vla-getboundingbox obj 'mn 'mx)
+                (setq mnL (vlax-safearray->list mn)
+                      mxL (vlax-safearray->list mx)
+                )
+                (if (< (car mnL) (car minpt)) (setq minpt (list (car mnL) (cadr minpt) 0.0)))
+                (if (< (cadr mnL) (cadr minpt)) (setq minpt (list (car minpt) (cadr mnL) 0.0)))
+                (if (> (car mxL) (car maxpt)) (setq maxpt (list (car mxL) (cadr maxpt) 0.0)))
+                (if (> (cadr mxL) (cadr maxpt)) (setq maxpt (list (car maxpt) (cadr mxL) 0.0)))
+            )
+            (list minpt maxpt)
+        )
+    )
+)
+
+(defun count:calc-table-text-height ( sel dataRows / bbox planH th )
+    (setq th count:table-data-height)
+    (if (and sel (> (sslength sel) 0) (> dataRows 0))
+        (progn
+            (setq bbox (count:union-ss-bbox sel))
+            (if bbox
+                (progn
+                    (setq planH (abs (- (cadr (cadr bbox)) (cadr (car bbox)))))
+                    (if (> planH 0.0)
+                        (setq th (/ (* planH 0.88) (* (+ dataRows 2) 2.35)))
+                    )
+                )
+            )
+        )
+    )
+    (min 16.0 (max 11.5 th))
+)
+
+(defun count:build-active-col-data ( lst / cols )
+    (setq cols '())
+    (if (= "1" tg3)
+        (setq cols (append cols (list (list ed4 (mapcar '(lambda ( i ) (count:format-quantity (cdr i))) lst)))))
+    )
+    (if (= "1" tg6)
+        (setq cols (append cols (list (list ed7 (mapcar '(lambda ( i ) (cadddr (car i))) lst)))))
+    )
+    (if (= "1" tg3)
+        (setq cols (append cols (list (list ed3 (mapcar '(lambda ( i ) (caar i)) lst)))))
+    )
+    (if (= "1" tg4)
+        (setq cols (append cols (list (list ed5 (mapcar '(lambda ( i ) (cadar i)) lst)))))
+    )
+    (if (= "1" tg5)
+        (setq cols (append cols (list (list ed6 (mapcar '(lambda ( i ) (caddar i)) lst)))))
+    )
+    cols
+)
+
+(defun count:row-cell-texts ( row_item / texts )
+    (setq texts '())
+    (if (= "1" tg3) (setq texts (append texts (list (count:format-quantity (cdr row_item))))))
+    (if (= "1" tg6) (setq texts (append texts (list (cadddr (car row_item))))))
+    (if (= "1" tg3) (setq texts (append texts (list (caar row_item)))))
+    (if (= "1" tg4) (setq texts (append texts (list (cadar row_item)))))
+    (if (= "1" tg5) (setq texts (append texts (list (caddar row_item)))))
+    texts
+)
+
+(defun count:format-table-layout ( tab lst ss / th cols widths colIdx row row_item rowTexts w lines maxLines rowH titleH hdrH )
+    (setq th (count:calc-table-text-height ss (length lst)))
+    (setq cols (count:build-active-col-data lst))
+    (setq widths
+        (mapcar
+            '(lambda ( c )
+                (count:max-layout-width (cons (car c) (cadr c)) th 1.5)
+            )
+            cols
+        )
+    )
+    (setq colIdx 0)
+    (foreach w widths
+        (vl-catch-all-apply 'vla-SetColumnWidth (list tab colIdx w))
+        (setq colIdx (1+ colIdx))
+    )
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow th))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* th 1.12)))
+    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* th 1.22)))
+    (setq titleH (+ (* th 1.22 1.45) (* th 0.35))
+          hdrH (+ (* th 1.12 1.35) (* th 0.35))
+    )
+    (if (= "1" tg1)
+        (progn
+            (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 titleH))
+            (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 hdrH))
+            (setq row 2)
+        )
+        (progn
+            (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 hdrH))
+            (setq row 1)
+        )
+    )
+    (foreach row_item lst
+        (setq rowTexts (count:row-cell-texts row_item)
+              maxLines 1
+              colIdx 0
+        )
+        (foreach txt rowTexts
+            (setq w (nth colIdx widths)
+                  lines (count:wrap-line-count txt w th)
+            )
+            (if (> lines maxLines) (setq maxLines lines))
+            (setq colIdx (1+ colIdx))
+        )
+        (setq rowH (+ (* th maxLines 1.28) (* th 0.45)))
+        (vl-catch-all-apply 'vla-SetRowHeight (list tab row rowH))
+        (setq row (1+ row))
+    )
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acTitleRow acMiddleCenter))
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acHeaderRow acMiddleCenter))
+    (vl-catch-all-apply 'vla-SetAlignment (list tab acDataRow acMiddleCenter))
+)
 
 ;;----------------------------------------------------------------------;;
 
@@ -99,41 +245,21 @@
 
 ;;----------------------------------------------------------------------;;
 
-(defun count:create-text-style ( style-name font-name / doc styles text-style )
+(defun count:create-text-style ( style-name font-names bold / doc styles text-style )
     (setq doc (vla-get-activedocument (vlax-get-acad-object)))
     (setq styles (vla-get-textstyles doc))
     (if (not (tblsearch "STYLE" style-name))
         (progn
             (setq text-style (vla-add styles style-name))
-            (vla-put-fontfile text-style font-name)
+            (vla-put-fontfile text-style (car font-names))
+            (if (and bold (vlax-property-available-p text-style 'Bold))
+                (vla-put-Bold text-style :vlax-true)
+            )
             (vla-put-height text-style 0.0)
             (vla-put-width text-style 1.0)
             (vla-put-obliqueangle text-style 0.0)
         )
     )
-)
-
-;;----------------------------------------------------------------------;;
-
-(defun count:apply-table-print-size ( tab / th blkNameCol col )
-    (setq th count:tag-ref-height)
-    ;; column widths - wider for Persian block names and dimensions
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 0 (* th 2.5)))   ;; qty
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 1 (* th 7.5)))   ;; dimensions
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 2 (* th 22.0)))  ;; block name
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 3 (* th 5.5)))   ;; product code
-    (vl-catch-all-apply 'vla-SetColumnWidth (list tab 4 (* th 2.5)))   ;; row
-    ;; font heights - match tag text on drawing
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acTitleRow (* th 1.25)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acHeaderRow (* th 1.15)))
-    (vl-catch-all-apply 'vla-SetTextHeight (list tab acDataRow th))
-    ;; row heights - taller cells for wrapped Persian text
-    (vl-catch-all-apply 'vla-put-RowHeight (list tab (* th 4.0)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 0 (* th 3.6)))
-    (vl-catch-all-apply 'vla-SetRowHeight (list tab 1 (* th 3.2)))
-    (vl-catch-all-apply 'vla-SetAlignment (list tab acTitleRow acMiddleCenter))
-    (vl-catch-all-apply 'vla-SetAlignment (list tab acHeaderRow acMiddleCenter))
-    (vl-catch-all-apply 'vla-SetAlignment (list tab acDataRow acMiddleCenter))
 )
 
 ;;----------------------------------------------------------------------;;
@@ -426,7 +552,7 @@
 
 
                     (vl-load-com)
-                    (count:create-text-style "B_Titr_Style" "B Yekan+")
+                    (count:create-text-style "Count_Table_Bold" '("B Yekan+ Bold" "B Yekan Bold" "B Yekan+") T)
 
                     (setq tab
                         (vla-addtable
@@ -434,8 +560,8 @@
                             (vlax-3D-point (trans ins 1 0))
                             (+ (length lst) 2)
                             col_count
-                            (* count:tag-ref-height 4.0)
-                            (* count:tag-ref-height 9.0)
+                            (* count:table-data-height 2.4)
+                            (* count:table-data-height 6.0)
                         )
                     )
 
@@ -447,9 +573,9 @@
 
 
                     (vla-put-stylename tab (getvar 'ctablestyle))
-                    (vla-settextstyle tab acTitleRow "B_Titr_Style")
-                    (vla-settextstyle tab acHeaderRow "B_Titr_Style")
-                    (vla-settextstyle tab acDataRow "B_Titr_Style")
+                    (vla-settextstyle tab acTitleRow "Count_Table_Bold")
+                    (vla-settextstyle tab acHeaderRow "Count_Table_Bold")
+                    (vla-settextstyle tab acDataRow "Count_Table_Bold")
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-true)
@@ -486,16 +612,6 @@
                             (vla-settext tab row col (caddar row_item)) 
                             (setq col (1+ col))))  ;; Row
 
-                        (if
-                            (or
-                                (> (strlen (caar row_item)) 30)
-                                (> (strlen (cadddr (car row_item))) 18)
-                            )
-                            (vl-catch-all-apply 'vla-SetRowHeight
-                                (list tab row (* count:tag-ref-height 5.5))
-                            )
-                        )
-
                         (setq row (1+ row))
                     )
 
@@ -508,8 +624,8 @@
                         (vla-deleterows tab 0 1)
                     )
 
-                    ;; Apply drawing-proportional table sizes after text fill
-                    (count:apply-table-print-size tab)
+                    ;; Smart layout: plan-scale height, content-based column widths
+                    (count:format-table-layout tab lst sel)
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-false)
