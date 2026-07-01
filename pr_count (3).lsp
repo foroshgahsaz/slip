@@ -87,7 +87,7 @@
 (defun count:ensure-table-style ( / doc styles ts )
     (setq doc (vla-get-activedocument (vlax-get-acad-object)))
     (setq styles (vla-get-textstyles doc))
-    (if (setq ts (tblsearch "STYLE" "B_Titr_Style"))
+    (if (tblsearch "STYLE" "B_Titr_Style")
         (setq ts (vla-item styles "B_Titr_Style"))
         (setq ts (vla-add styles "B_Titr_Style"))
     )
