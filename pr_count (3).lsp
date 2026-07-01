@@ -127,7 +127,7 @@
     (setq maxLines 1 colIdx 0)
     (foreach txt texts
         (setq w (nth colIdx widths)
-              lines (max 1 (1+ (fix (/ (max 1 (count:safe-strlen txt)) (max 1 (fix (/ w (* th 0.58)))))))
+              lines (max 1 (1+ (fix (/ (max 1 (count:safe-strlen txt)) (max 1 (fix (/ w (* th 0.58))))))))
         )
         (if (> lines maxLines) (setq maxLines lines))
         (setq colIdx (1+ colIdx))
@@ -560,6 +560,10 @@
                     (if (= "1" tg1)
                         (vla-settext tab 0 0 ed1)
                     )
+
+                    (vla-SetTextHeight tab acDataRow count:table-data-height)
+                    (vla-SetTextHeight tab acHeaderRow (* count:table-data-height 1.1))
+                    (vla-SetTextHeight tab acTitleRow (* count:table-data-height 1.2))
 
                     (if (vlax-property-available-p tab 'regeneratetablesuppressed t)
                         (vla-put-regeneratetablesuppressed tab :vlax-false)
